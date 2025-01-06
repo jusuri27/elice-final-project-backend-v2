@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.hr_handlers.salary.repository.mapper.SalaryMapper">
+    <!--  개인별 year 급여 집계  -->
+    <select id="getMonthlySalarySummary" resultType="com.hr_handlers.salary.dto.request.SalaryExcelDownloadRequestDto">
+        SELECT
+            CASE
+                WHEN pay_date IS NULL THEN '합계'
+                ELSE dept_name
+            END AS dept_name,
+            position,
+            CASE
+                WHEN pay_date IS NULL THEN ''
+                ELSE name
+            END AS name,
+            pay_date,
+            SUM(s.basic_salary) AS basic_salary,
+            SUM(s.deduction) AS deduction,
+            SUM(s.net_salary) AS net_salary
+        FROM
+            salary s
+        LEFT JOIN employee e ON s.employee_id = e.id
+        LEFT JOIN department d ON e.department_id = d.id
+        <where>
+            <if test="employeeNumber != null and employeeNumber != ''">
+                e.employee_number = #{employeeNumber}
+            </if>
+        </where>
+        GROUP BY pay_date WITH ROLLUP;
+    </select>
+</mapper>

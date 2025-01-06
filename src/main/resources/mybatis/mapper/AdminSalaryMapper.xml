@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.hr_handlers.admin.mapper.AdminSalaryMapper">
+
+    <!-- 공통 조건 정의 -->
+    <sql id="CommonWhereClause">
+        <where>
+            <if test="position != null and position != ''">
+                e.position = #{position}
+            </if>
+            <if test="name != null and name != ''">
+                AND e.name LIKE CONCAT('%', #{name}, '%')
+            </if>
+            <if test="deptName != null and deptName != ''">
+                AND d.dept_name = #{deptName}
+            </if>
+            <if test="startDate != null and endDate != null">
+                AND s.pay_date BETWEEN #{startDate} AND #{endDate}
+            </if>
+        </where>
+    </sql>
+
+    <!--  개인별 year 급여 집계  -->
+    <select id="getYearlySummaryByIndividual" resultType="com.hr_handlers.admin.dto.salary.request.excel.IndividualYearSalaryExcelRequestDto">
+        SELECT
+            get_individual_dept_name(dept_name, name, year) as dept_name,
+            get_individual_name(name, year) as name,
+            year,
+            SUM(s.basic_salary) AS basic_salary,
+            SUM(s.deduction) AS deduction,
+            SUM(s.net_salary) AS net_salary
+        FROM
+            salary s
+        LEFT JOIN employee e ON s.employee_id = e.id
+        LEFT JOIN department d ON e.department_id = d.id
+        <include refid="CommonWhereClause" />
+        GROUP BY dept_name, name, year WITH ROLLUP;
+    </select>
+
+    <!--  개인별 month 급여 집계  -->
+    <select id="getMonthlySummaryByIndividual" resultType="com.hr_handlers.admin.dto.salary.request.excel.IndividualMonthSalaryExcelRequestDto">
+        SELECT
+            CASE
+                WHEN dept_name IS NULL THEN '총 합계'
+                WHEN name IS NULL THEN '팀간 합계'
+                WHEN pay_date IS NULL THEN '합계'
+                ELSE dept_name
+            END AS dept_name,
+            CASE
+                WHEN pay_date IS NULL THEN ''
+                ELSE name
+            END AS name,
+            pay_date,
+            SUM(s.basic_salary) AS basic_salary,
+            SUM(s.deduction) AS deduction,
+            SUM(s.net_salary) AS net_salary
+        FROM
+            salary s
+        LEFT JOIN employee e ON s.employee_id = e.id
+        LEFT JOIN department d ON e.department_id = d.id
+        <include refid="CommonWhereClause" />
+        GROUP BY dept_name, name, pay_date  WITH ROLLUP;
+    </select>
+
+    <!--  부서별 year 급여 집계  -->
+    <select id="getYearlySummaryByDepartment" resultType="com.hr_handlers.admin.dto.salary.request.excel.DepartmentYearSalaryExcelRequestDto">
+        SELECT
+            get_department_dept_name(dept_name, year),
+            year,
+            SUM(s.basic_salary) AS basic_salary,
+            SUM(s.deduction) AS deduction,
+            SUM(s.net_salary) AS net_salary
+        FROM
+            salary s
+        LEFT JOIN employee e ON s.employee_id = e.id
+        LEFT JOIN department d ON e.department_id = d.id
+        <include refid="CommonWhereClause" />
+        GROUP BY d.dept_name, s.year WITH ROLLUP
+    </select>
+
+    <!--  부서별 month 급여 집계  -->
+    <select id="getMonthlySummaryByDepartment" resultType="com.hr_handlers.admin.dto.salary.request.excel.DepartmentMonthSalaryExcelRequestDto">
+        SELECT
+            CASE
+                WHEN d.dept_name IS NULL THEN '총 합계'
+                WHEN pay_date IS NULL THEN '중간 합계'
+                ELSE dept_name
+            END AS dept_name,
+            pay_date,
+            SUM(s.basic_salary) AS basic_salary,
+            SUM(s.deduction) AS deduction,
+            SUM(s.net_salary) AS net_salary
+        FROM
+            salary s
+        LEFT JOIN employee e ON s.employee_id = e.id
+        LEFT JOIN department d ON e.department_id = d.id
+        <include refid="CommonWhereClause" />
+        GROUP BY dept_name, pay_date WITH ROLLUP
+    </select>
+
+</mapper>
