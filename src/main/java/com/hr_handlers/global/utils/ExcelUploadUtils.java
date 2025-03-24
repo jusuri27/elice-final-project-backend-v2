@@ -146,8 +146,19 @@ public class ExcelUploadUtils implements ExcelUtilMethodFactory {
                 field.setAccessible(true); // private 필드에 접근하기 위해
                 String value = field.get(datum) == null ? "" : String.valueOf(field.get(datum));
 
-                row.createCell(colIdx, CellType.STRING).setCellValue(Objects.requireNonNullElse(value, ""));
+                Cell cell = row.createCell(colIdx, CellType.STRING);
+
+                CellStyle cellStyle = sheet.getWorkbook().createCellStyle();
+                cellStyle.setBorderTop(BorderStyle.THIN);
+                cellStyle.setBorderBottom(BorderStyle.THIN);
+                cellStyle.setBorderLeft(BorderStyle.THIN);
+                cellStyle.setBorderRight(BorderStyle.THIN);
+
+                cell.setCellValue(Objects.requireNonNullElse(value, ""));
+                cell.setCellStyle(cellStyle); // 색상 적용
+
                 colIdx++;
+
 
                 // 특정 행 타입을 확인하여 스타일 지정
                 // todo : 나중에 리팩토링 ㄱㄱ
