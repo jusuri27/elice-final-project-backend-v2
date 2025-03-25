@@ -96,9 +96,18 @@ public class ExcelUploadUtils implements ExcelUtilMethodFactory {
         for (Field field : clazz.getDeclaredFields()) {
             if (field.isAnnotationPresent(ExcelColumn.class)) {
                 String headerName = field.getAnnotation(ExcelColumn.class).headerName();
-                row.createCell(colIdx, CellType.STRING).setCellValue(
-                        headerName.equals("") ? field.getName() : headerName
-                );
+
+                Cell cell = row.createCell(colIdx, CellType.STRING);
+
+                CellStyle cellStyle = sheet.getWorkbook().createCellStyle();
+                cellStyle.setBorderTop(BorderStyle.MEDIUM);
+                cellStyle.setBorderBottom(BorderStyle.MEDIUM);
+                cellStyle.setBorderLeft(BorderStyle.MEDIUM);
+                cellStyle.setBorderRight(BorderStyle.MEDIUM);
+                cellStyle.setFillForegroundColor(IndexedColors.LIGHT_TURQUOISE.getIndex());
+                cellStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+                cell.setCellValue(headerName.equals("") ? field.getName() : headerName);
+                cell.setCellStyle(cellStyle); // 색상 적용
                 colIdx++;
             }
         }
