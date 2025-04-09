@@ -87,8 +87,8 @@ public class ExcelUploadUtils implements ExcelUtilMethodFactory {
     }
 
     public <T> void renderHeader(Sheet sheet, Class<T> clazz) {
-        int headerStartRowToRender = 0;
-        int startColToRender = 0;
+        int headerStartRowToRender = 1;
+        int startColToRender = 1;
 
         Row row = sheet.createRow(headerStartRowToRender);
         int colIdx = startColToRender;
@@ -96,9 +96,18 @@ public class ExcelUploadUtils implements ExcelUtilMethodFactory {
         for (Field field : clazz.getDeclaredFields()) {
             if (field.isAnnotationPresent(ExcelColumn.class)) {
                 String headerName = field.getAnnotation(ExcelColumn.class).headerName();
-                row.createCell(colIdx, CellType.STRING).setCellValue(
-                        headerName.equals("") ? field.getName() : headerName
-                );
+
+                Cell cell = row.createCell(colIdx, CellType.STRING);
+
+                CellStyle cellStyle = sheet.getWorkbook().createCellStyle();
+                cellStyle.setBorderTop(BorderStyle.MEDIUM);
+                cellStyle.setBorderBottom(BorderStyle.MEDIUM);
+                cellStyle.setBorderLeft(BorderStyle.MEDIUM);
+                cellStyle.setBorderRight(BorderStyle.MEDIUM);
+                cellStyle.setFillForegroundColor(IndexedColors.LIGHT_TURQUOISE.getIndex());
+                cellStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+                cell.setCellValue(headerName.equals("") ? field.getName() : headerName);
+                cell.setCellStyle(cellStyle); // 색상 적용
                 colIdx++;
             }
         }
@@ -110,8 +119,8 @@ public class ExcelUploadUtils implements ExcelUtilMethodFactory {
     }
 
     public <T> void renderBody(Sheet sheet, List<T> data, Class<T> clazz) throws IllegalAccessException {
-        int rowIdx = 1;
-        int startColToRender = 0;
+        int rowIdx = 2;
+        int startColToRender = 1;
 
         // todo : 나중에 리팩토링 ㄱㄱ
         Workbook workbook = sheet.getWorkbook();
@@ -146,8 +155,19 @@ public class ExcelUploadUtils implements ExcelUtilMethodFactory {
                 field.setAccessible(true); // private 필드에 접근하기 위해
                 String value = field.get(datum) == null ? "" : String.valueOf(field.get(datum));
 
-                row.createCell(colIdx, CellType.STRING).setCellValue(Objects.requireNonNullElse(value, ""));
+                Cell cell = row.createCell(colIdx, CellType.STRING);
+
+                CellStyle cellStyle = sheet.getWorkbook().createCellStyle();
+                cellStyle.setBorderTop(BorderStyle.THIN);
+                cellStyle.setBorderBottom(BorderStyle.THIN);
+                cellStyle.setBorderLeft(BorderStyle.THIN);
+                cellStyle.setBorderRight(BorderStyle.THIN);
+
+                cell.setCellValue(Objects.requireNonNullElse(value, ""));
+                cell.setCellStyle(cellStyle); // 색상 적용
+
                 colIdx++;
+
 
                 // 특정 행 타입을 확인하여 스타일 지정
                 // todo : 나중에 리팩토링 ㄱㄱ
@@ -163,16 +183,16 @@ public class ExcelUploadUtils implements ExcelUtilMethodFactory {
             }
 
             if (currentRowStyle != null) {
-                for (int i = 0; i < row.getPhysicalNumberOfCells(); i++) {
+                for (int i = 1; i <= row.getPhysicalNumberOfCells(); i++) {
 
                     CellStyle cellStyle = sheet.getWorkbook().createCellStyle();
                     cellStyle.cloneStyleFrom(currentRowStyle); // 기존 스타일 복사
 
-                    if (i == 0) {
+                    if (i == 1) {
                         cellStyle.setBorderLeft(BorderStyle.MEDIUM);
                         cellStyle.setBorderTop(BorderStyle.MEDIUM);
                         cellStyle.setBorderBottom(BorderStyle.MEDIUM);
-                    } else if (i == row.getPhysicalNumberOfCells() - 1) {
+                    } else if (i == row.getPhysicalNumberOfCells()) {
                         cellStyle.setBorderRight(BorderStyle.MEDIUM);
                         cellStyle.setBorderTop(BorderStyle.MEDIUM);
                         cellStyle.setBorderBottom(BorderStyle.MEDIUM);
