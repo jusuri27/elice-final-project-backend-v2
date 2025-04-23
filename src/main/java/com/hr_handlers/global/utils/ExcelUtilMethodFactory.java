@@ -8,7 +8,7 @@ import java.io.OutputStream;
 import java.util.List;
 
 public interface ExcelUtilMethodFactory {
-    public <T> List<T> parseExcelToObject(MultipartFile file, Class<T> clazz)  throws IOException;
+    public <T> List<T> parseExcelToObject(MultipartFile file, Class<T> clazz)  throws IOException, InterruptedException;
     public <T> void renderObjectToExcel(OutputStream stream, List<T> data, Class<T> clazz) throws IOException, IllegalAccessException;
 
 

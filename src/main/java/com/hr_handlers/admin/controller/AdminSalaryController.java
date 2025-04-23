@@ -7,6 +7,7 @@ import com.hr_handlers.admin.service.AdminSalaryService;
 import com.hr_handlers.global.dto.SuccessResponse;
 import com.hr_handlers.global.exception.ErrorResponse;
 import com.hr_handlers.global.utils.ExcelUploadUtils;
+import com.hr_handlers.global.utils.ExcelUploadUtilsV2;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -35,6 +36,7 @@ public class AdminSalaryController {
 
     private final AdminSalaryService adminSalaryService;
     private final ExcelUploadUtils excelUploadUtils;
+    private final ExcelUploadUtilsV2 excelUploadUtilsV2;
 
     @Operation(summary = "급여 전체 조회")
     @ApiResponses({
@@ -105,8 +107,9 @@ public class AdminSalaryController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PostMapping("/excel/upload")
-    public SuccessResponse<Boolean> excelUpload(@RequestPart(value = "file", required = true) MultipartFile file) throws IOException {
-        return adminSalaryService.excelUploadSalary(excelUploadUtils.parseExcelToObject(file, AdminSalaryExcelUploadRequestDto.class));
+    public SuccessResponse<Boolean> excelUpload(@RequestPart(value = "file", required = true) MultipartFile file) throws IOException, InterruptedException {
+//        return adminSalaryService.excelUploadSalary(excelUploadUtils.parseExcelToObject(file, AdminSalaryExcelUploadRequestDto.class));
+        return adminSalaryService.excelUploadSalary(excelUploadUtilsV2.parseExcelToObject(file, AdminSalaryExcelUploadRequestDto.class));
     }
 
     @Operation(summary = "급여 엑셀 다운로드")
