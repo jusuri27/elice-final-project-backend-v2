@@ -2,84 +2,89 @@ package com.hr_handlers.global.utils;
 
 import com.hr_handlers.global.exception.ErrorCode;
 import com.hr_handlers.global.exception.GlobalException;
+import com.monitorjbl.xlsx.StreamingReader;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.util.IOUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.*;
+
 
 @Component
 public class ExcelUploadUtilsV2 implements ExcelUtilMethodFactory {
-    public <T> List<T> parseExcelToObject(MultipartFile file, Class<T> clazz) throws IOException, InterruptedException  {
+    public <T> List<T> parseExcelToObject(MultipartFile file, Class<T> clazz) {
         IOUtils.setByteArrayMaxOverride(300_000_000); // 레코드 크기 300MB까지 허용
-//        ZipSecureFile.setMinInflateRatio(0);
 
-        System.gc(); // GC 유도
-        Thread.sleep(100); // GC 안정 시간
+        try {
+            InputStream is = file.getInputStream();
+            Workbook workbook = StreamingReader.builder()
+                    .rowCacheSize(100)  // 메모리에 유지할 행 수
+                    .bufferSize(4096)
+                    .open(is);
 
-        Runtime runtime = Runtime.getRuntime();
+            Sheet sheet = workbook.getSheetAt(0);
+            Iterator<Row> rowIterator = sheet.iterator();
 
-        long maxMemory = runtime.maxMemory();          // 최대 힙 메모리
-        long totalMemory = runtime.totalMemory();      // 현재 할당된 힙 메모리
-        long freeMemory = runtime.freeMemory();        // 사용 가능한 힙 메모리
-        long usedMemory = totalMemory - freeMemory;    // 실제 사용 중인 메모리
+            // 1. 헤더 파싱
+            if (!rowIterator.hasNext()) {
+                throw new IllegalStateException("엑셀 파일에 데이터가 없습니다.");
+            }
+            Row headerRow = rowIterator.next();
+            parseHeader(headerRow, clazz);
 
-        System.out.printf("Max Memory: %d MB%n", maxMemory / (1024 * 1024));
-        System.out.printf("Total Memory: %d MB%n", totalMemory / (1024 * 1024));
-        System.out.printf("freeMemory: %d MB%n", freeMemory / (1024 * 1024));
-        System.out.printf("Used Memory: %d MB%n", usedMemory / (1024 * 1024));
+            // 2. 본문 파싱
+            List<T> data = new ArrayList<>();
+            int rowIndex = 1;
 
-        long beforeUsedMem = getUsedMemory();
-        System.out.printf("Before: %d MB%n", beforeUsedMem / (1024 * 1024));
+            while (rowIterator.hasNext()) {
+                Row row = rowIterator.next();
+                if (row == null || row.getPhysicalNumberOfCells() == 0) continue;
 
-        Workbook workbook = WorkbookFactory.create(file.getInputStream());
-        Sheet sheet = workbook.getSheetAt(0);
+                try {
+                    T instance = clazz.getDeclaredConstructor().newInstance();
+                    Method method = clazz.getMethod("fillUpFromRow", Row.class);
+                    method.invoke(instance, row);
+                    data.add(instance);
 
-        System.gc();
-        Thread.sleep(100); // GC 안정 시간
+                } catch (Exception e) {
+                    throw new RuntimeException("Row " + rowIndex + " 변환 중 오류", e);
+                }
+                rowIndex++;
+            }
 
-        long afterUsedMem = getUsedMemory();
-        System.out.printf("After: %d MB%n", afterUsedMem / (1024 * 1024));
+            return data;
 
-        long memoryUsedByApi = afterUsedMem - beforeUsedMem;
-        System.out.printf("Memory used by API: %d MB%n", memoryUsedByApi / (1024 * 1024));
-
-        parseHeader(sheet, clazz);
-        return parseBody(sheet, clazz);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    private long getUsedMemory() {
-        Runtime runtime = Runtime.getRuntime();
-        return runtime.totalMemory() - runtime.freeMemory();
-    }
-
+    @Override
     public <T> void parseHeader(Sheet sheet, Class<T> clazz) {
+
+    }
+
+    public <T> void parseHeader(Row headerRow, Class<T> clazz) {
         Set<String> excelHeaders = new HashSet<>();
         Set<String> classHeaders = new HashSet<>();
-        int headerStartRowToParse = 0;
 
-        sheet.getRow(headerStartRowToParse).cellIterator()
-                .forEachRemaining(e -> excelHeaders.add(e.getStringCellValue()));
+        headerRow.cellIterator().forEachRemaining(cell -> excelHeaders.add(cell.getStringCellValue()));
 
         Arrays.stream(clazz.getDeclaredFields())
-                .filter(e -> e.isAnnotationPresent(ExcelColumn.class))
-                .forEach(e -> {
-                    if (e.getAnnotation(ExcelColumn.class).headerName().equals("")) {
-                        classHeaders.add(e.getName());
-                    }
-                    else {
-                        classHeaders.add(e.getAnnotation(ExcelColumn.class).headerName());
-                    }
+                .filter(f -> f.isAnnotationPresent(ExcelColumn.class))
+                .forEach(f -> {
+                    String headerName = f.getAnnotation(ExcelColumn.class).headerName();
+                    classHeaders.add(headerName.isEmpty() ? f.getName() : headerName);
                 });
 
         if (!excelHeaders.containsAll(classHeaders)) {
-            // 업로드한 엑셀 헤더가 엑셀Dto에 선언한 내용과 불일치 할경우
-            //todo exception 따로처리
-            throw new IllegalStateException("헤더 불일치.");
+            throw new IllegalStateException("엑셀 헤더와 DTO 필드가 불일치합니다.");
         }
     }
 

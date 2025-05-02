@@ -3,6 +3,7 @@ package com.hr_handlers.global.utils;
 import com.hr_handlers.global.exception.ErrorCode;
 import com.hr_handlers.global.exception.GlobalException;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.util.IOUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -13,12 +14,19 @@ import java.util.*;
 
 @Component
 public class ExcelUploadUtils implements ExcelUtilMethodFactory {
-    public <T> List<T> parseExcelToObject(MultipartFile file, Class<T> clazz) throws IOException {
+    public <T> List<T> parseExcelToObject(MultipartFile file, Class<T> clazz) throws IOException, InterruptedException  {
+        IOUtils.setByteArrayMaxOverride(300_000_000); // 레코드 크기 300MB까지 허용
+
         Workbook workbook = WorkbookFactory.create(file.getInputStream());
         Sheet sheet = workbook.getSheetAt(0);
 
         parseHeader(sheet, clazz);
         return parseBody(sheet, clazz);
+    }
+
+    @Override
+    public <T> void parseHeader(Row row, Class<T> clazz) {
+
     }
 
     public <T> void parseHeader(Sheet sheet, Class<T> clazz) {

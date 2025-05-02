@@ -80,8 +80,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-mail'
 
 	// excel
-	implementation 'org.apache.poi:poi:5.2.3'        // HSSF (for .xls files)
-	implementation 'org.apache.poi:poi-ooxml:5.2.3'  // XSSF (for .xlsx files)
+	implementation 'org.apache.poi:poi-ooxml:4.1.2'  // XSSF (for .xlsx files) 4.1.2 사용해야 됌!!
 	implementation 'com.monitorjbl:xlsx-streamer:2.2.0'
 
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'

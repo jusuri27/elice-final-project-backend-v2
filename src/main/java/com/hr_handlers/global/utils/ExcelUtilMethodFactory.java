@@ -1,5 +1,6 @@
 package com.hr_handlers.global.utils;
 
+import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -12,7 +13,8 @@ public interface ExcelUtilMethodFactory {
     public <T> void renderObjectToExcel(OutputStream stream, List<T> data, Class<T> clazz) throws IOException, IllegalAccessException;
 
 
-    public <T> void parseHeader(Sheet sheet, Class<T> clazz);
+    public <T> void parseHeader(Sheet sheet, Class<T> clazz); // DOM 방식
+    public <T> void parseHeader(Row row, Class<T> clazz); // SAX 방식
     public <T> List<T> parseBody(Sheet sheet, Class<T> clazz);
 
     public <T> void renderHeader(Sheet sheet, Class<T> clazz);
