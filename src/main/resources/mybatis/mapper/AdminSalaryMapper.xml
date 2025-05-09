@@ -101,4 +101,12 @@
         GROUP BY dept_name, pay_date WITH ROLLUP
     </select>
 
+    <insert id="excelUploadWithForeach">
+        INSERT INTO salary (employee_id, basic_salary, deduction, net_salary, pay_date, year, created_at, updated_at)
+        VALUES
+        <foreach collection="salaries" item="salary" separator=",">
+            (#{salary.employee.id}, #{salary.basicSalary}, #{salary.deduction}, #{salary.netSalary}, #{salary.payDate}, #{salary.year}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        </foreach>
+    </insert>
+
 </mapper>

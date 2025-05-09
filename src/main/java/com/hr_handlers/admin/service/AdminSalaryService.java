@@ -17,6 +17,7 @@ import com.hr_handlers.global.utils.ExcelUploadUtils;
 import com.hr_handlers.salary.entity.Salary;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.formula.functions.T;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -24,13 +25,12 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AdminSalaryService {
 
     private final AdminSalaryRepository adminSalaryRepository;
@@ -71,11 +71,10 @@ public class AdminSalaryService {
         return SuccessResponse.of("급여가 삭제 되었습니다.", true);
     }
 
-    // 급여관리 엑셀 업로드
+    // 급여관리 엑셀 업로드 -> saveAll()
     @Transactional
     public SuccessResponse<Boolean> excelUploadSalary(List<AdminSalaryExcelUploadRequestDto> adminSalaryExcelUploadRequestDtos) {
 
-        // todo : 엑셀dto에서 a사원의 2024-11-13 row가 2개 이상일 경우 유효성 검사 어떻게 처리할지??
         // todo : 엑셀에 빈 행이 있을경우 유효성 검사??
 
         // 엑셀 dto에서 Employee ID 목록 뽑아내기
@@ -97,6 +96,35 @@ public class AdminSalaryService {
                 .collect(Collectors.toList());
 
         adminSalaryRepository.saveAll(salaries);
+
+        return SuccessResponse.of("급여가 등록 되었습니다.", true);
+    }
+
+    // 급여관리 엑셀 업로드 -> mybatis foreach
+    @Transactional
+    public SuccessResponse<Boolean> excelUploadSalaryV2(List<AdminSalaryExcelUploadRequestDto> adminSalaryExcelUploadRequestDtos) {
+
+        // todo : 엑셀에 빈 행이 있을경우 유효성 검사??
+
+        // 엑셀 dto에서 Employee ID 목록 뽑아내기
+        List<String> employeeIds = adminSalaryExcelUploadRequestDtos.stream()
+                .map(AdminSalaryExcelUploadRequestDto::getEmployeeId)
+                .distinct()  // 중복되는 Employee ID를 제외
+                .collect(Collectors.toList());
+
+        // Employee ID 목록을 받아서 한 번에 Employee 객체들을 조회
+        Map<String, Employee> employeeMap = empRepository.findAllByEmpNoIn(employeeIds).stream()
+                .collect(Collectors.toMap(Employee::getEmpNo, e -> e));
+
+        List<Salary> salaries = adminSalaryExcelUploadRequestDtos.stream()
+                .map(request -> {
+                    Employee employee = Optional.ofNullable(employeeMap.get(request.getEmployeeId()))
+                            .orElseThrow(() -> new GlobalException(ErrorCode.EMPLOYEE_NOT_FOUND));
+                    return request.toCreateEntity(employee);
+                })
+                .collect(Collectors.toList());
+
+        adminSalaryMapper.excelUploadWithForeach(salaries);
 
         return SuccessResponse.of("급여가 등록 되었습니다.", true);
     }

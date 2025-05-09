@@ -108,8 +108,9 @@ public class AdminSalaryController {
     })
     @PostMapping("/excel/upload")
     public SuccessResponse<Boolean> excelUpload(@RequestPart(value = "file", required = true) MultipartFile file) throws IOException, InterruptedException {
-//        return adminSalaryService.excelUploadSalary(excelUploadUtils.parseExcelToObject(file, AdminSalaryExcelUploadRequestDto.class));
-        return adminSalaryService.excelUploadSalary(excelUploadUtilsV2.parseExcelToObject(file, AdminSalaryExcelUploadRequestDto.class));
+//        return adminSalaryService.excelUploadSalary(excelUploadUtils.parseExcelToObject(file, AdminSalaryExcelUploadRequestDto.class)); // DOM방식 엑셀 파싱 + saveAll
+//        return adminSalaryService.excelUploadSalary(excelUploadUtilsV2.parseExcelToObject(file, AdminSalaryExcelUploadRequestDto.class)); // SAX방식 엑셀 파싱 + saveAll
+        return adminSalaryService.excelUploadSalaryV2(excelUploadUtilsV2.parseExcelToObject(file, AdminSalaryExcelUploadRequestDto.class)); // SAX방식 엑셀 파싱 + foreach
     }
 
     @Operation(summary = "급여 엑셀 다운로드")
