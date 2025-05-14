@@ -95,38 +95,47 @@ public class AdminSalaryService {
                 })
                 .collect(Collectors.toList());
 
-        adminSalaryRepository.saveAll(salaries);
+//        adminSalaryRepository.saveAll(salaries);
+        foreachInsert(salaries);
 
         return SuccessResponse.of("급여가 등록 되었습니다.", true);
     }
 
-    // 급여관리 엑셀 업로드 -> mybatis foreach
-    @Transactional
-    public SuccessResponse<Boolean> excelUploadSalaryV2(List<AdminSalaryExcelUploadRequestDto> adminSalaryExcelUploadRequestDtos) {
+    // mybatis foreach
+    public void foreachInsert(List<Salary> salaries) {
 
-        // todo : 엑셀에 빈 행이 있을경우 유효성 검사??
+        // 배치 단위 설정 (10만 건)
+        final int BATCH_SIZE = 100_000;
+        int totalSize = salaries.size();
 
-        // 엑셀 dto에서 Employee ID 목록 뽑아내기
-        List<String> employeeIds = adminSalaryExcelUploadRequestDtos.stream()
-                .map(AdminSalaryExcelUploadRequestDto::getEmployeeId)
-                .distinct()  // 중복되는 Employee ID를 제외
-                .collect(Collectors.toList());
+        for (int i = 0; i < totalSize; i += BATCH_SIZE) {
+            int endIndex = Math.min(i + BATCH_SIZE, totalSize);
+            List<Salary> batch = salaries.subList(i, endIndex);
 
-        // Employee ID 목록을 받아서 한 번에 Employee 객체들을 조회
-        Map<String, Employee> employeeMap = empRepository.findAllByEmpNoIn(employeeIds).stream()
-                .collect(Collectors.toMap(Employee::getEmpNo, e -> e));
+            adminSalaryMapper.excelUploadWithForeach(batch);
 
-        List<Salary> salaries = adminSalaryExcelUploadRequestDtos.stream()
-                .map(request -> {
-                    Employee employee = Optional.ofNullable(employeeMap.get(request.getEmployeeId()))
-                            .orElseThrow(() -> new GlobalException(ErrorCode.EMPLOYEE_NOT_FOUND));
-                    return request.toCreateEntity(employee);
-                })
-                .collect(Collectors.toList());
+            // 메모리 상태 출력
+            printMemoryUsage(i / BATCH_SIZE + 1);
+        }
 
-        adminSalaryMapper.excelUploadWithForeach(salaries);
+    }
 
-        return SuccessResponse.of("급여가 등록 되었습니다.", true);
+    private void printMemoryUsage(int batchNumber) {
+        Runtime runtime = Runtime.getRuntime();
+        long totalMemory = runtime.totalMemory();   // JVM 전체 메모리
+        long freeMemory = runtime.freeMemory();     // 사용 가능한 메모리
+        long usedMemory = totalMemory - freeMemory; // 사용 중인 메모리
+
+        System.out.printf("수행횟수 %d\tTotal Memory: %.3f MB\tFree Memory: %.3f MB\tUsed Memory: %.3f MB%n",
+                batchNumber,
+                bytesToMB(totalMemory),
+                bytesToMB(freeMemory),
+                bytesToMB(usedMemory));
+
+    }
+
+    private double bytesToMB(long bytes) {
+        return bytes / 1024.0 / 1024.0;
     }
 
     public SuccessResponse<Boolean> excelDownloadSalary(OutputStream stream, AdminSalaryExcelRequestDto adminSalaryExcelRequestDto) throws IOException, IllegalAccessException {
