@@ -109,4 +109,9 @@
         </foreach>
     </insert>
 
+    <insert id="excelUploadWithSqlSession">
+        INSERT INTO salary (employee_id, basic_salary, deduction, net_salary, pay_date, year, created_at, updated_at)
+        VALUES (#{employee.id}, #{basicSalary}, #{deduction}, #{netSalary}, #{payDate}, #{year}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    </insert>
+
 </mapper>

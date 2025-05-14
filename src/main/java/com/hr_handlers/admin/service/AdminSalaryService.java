@@ -18,6 +18,9 @@ import com.hr_handlers.salary.entity.Salary;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.ibatis.session.ExecutorType;
+import org.apache.ibatis.session.SqlSession;
+import org.apache.ibatis.session.SqlSessionFactory;
 import org.apache.poi.ss.formula.functions.T;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -38,6 +41,7 @@ public class AdminSalaryService {
     private final ExcelUploadUtils excelUploadUtils;
 
     private final AdminSalaryMapper adminSalaryMapper;
+    private final SqlSessionFactory sqlSessionFactory;
     
     // 급여관리 전체 조회
     public SuccessResponse<List<AdminSalaryResponseDto>> getAllUserSalary() {
@@ -96,7 +100,8 @@ public class AdminSalaryService {
                 .collect(Collectors.toList());
 
 //        adminSalaryRepository.saveAll(salaries);
-        foreachInsert(salaries);
+//        foreachInsert(salaries);
+        sqlSessionInsert(salaries);
 
         return SuccessResponse.of("급여가 등록 되었습니다.", true);
     }
@@ -118,6 +123,26 @@ public class AdminSalaryService {
             printMemoryUsage(i / BATCH_SIZE + 1);
         }
 
+    }
+
+    // mybatis sqlSession
+    public void sqlSessionInsert(List<Salary> salaries) {
+        final int BATCH_SIZE = 10_000;
+        int totalSize = salaries.size();
+
+        SqlSession session = sqlSessionFactory.openSession(ExecutorType.BATCH);
+        AdminSalaryMapper mapper = session.getMapper(AdminSalaryMapper.class);
+
+        for (int i = 0; i < totalSize; i++) {
+            mapper.excelUploadWithSqlSession(salaries.get(i));
+
+            if(i % BATCH_SIZE == 0) {
+                session.flushStatements(); // 쌓인 쿼리 실행
+                session.clearCache(); // 1차 캐쉬 제거
+                printMemoryUsage(i / BATCH_SIZE + 1);
+            }
+        }
+        session.commit();
     }
 
     private void printMemoryUsage(int batchNumber) {

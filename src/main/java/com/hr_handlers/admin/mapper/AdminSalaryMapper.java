@@ -17,4 +17,6 @@ public interface AdminSalaryMapper {
     List<T> getMonthlySummaryByDepartment(AdminSalarySearchRequestDto search);
 
     void excelUploadWithForeach(@Param("salaries") List<Salary> salaries);
+
+    void excelUploadWithSqlSession(Salary salary);
 }
